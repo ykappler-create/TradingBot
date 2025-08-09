@@ -13,3 +13,5 @@ Kurzbeschreibung: Swing-Trading-Bot (Alpaca/Bitget), mit Risiko-Guards & Reporti
 
 ## Sicherheit
 - Keine Secrets im Repo (.env ist ignoriert).
+
+![CI](https://github.com/ykappler-create/TradingBot/actions/workflows/python-ci.yml/badge.svg)
