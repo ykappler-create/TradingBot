@@ -20,3 +20,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 "@ | Out-File -Encoding utf8 .gitignore
+
+# Generated outputs
+bridge_out/
+trading_log.csv

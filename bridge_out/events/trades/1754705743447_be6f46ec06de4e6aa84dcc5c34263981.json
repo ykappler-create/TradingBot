@@ -1,1 +1,0 @@
-{"ts": 1754705743447, "type": "trades", "event": "open", "symbol": "SPY", "side": "long", "qty": 1, "price": 637.4749999999999, "leverage": 1, "exchange": "alpaca", "strategy_id": "dyn_atr_v1", "rationale": "Demo: Alpaca Mid-Quote + Logging (Paper)"}
