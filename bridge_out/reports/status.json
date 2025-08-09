@@ -1,0 +1,14 @@
+{
+  "paper_capital": 10000.0,
+  "realized_pnl": 2.9093708921504633,
+  "profit_factor": 2909370892.15,
+  "winrate_pct": 100.0,
+  "max_drawdown_pct": 0.0,
+  "exposures": [],
+  "avg_leverage": 1.0,
+  "last_update_ts": 1754747564520,
+  "counts": {
+    "trades_total": 8,
+    "equity_points": 76
+  }
+}

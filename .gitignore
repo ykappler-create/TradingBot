@@ -1,0 +1,22 @@
+cd "C:\Users\ykapp\Desktop\TradingBot"
+
+@"
+# Python / Projekt
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.sqlite3
+
+# Secrets
+.env
+.env.*
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+"@ | Out-File -Encoding utf8 .gitignore

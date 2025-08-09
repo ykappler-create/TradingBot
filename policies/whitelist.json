@@ -1,0 +1,16 @@
+{
+  "allowed_paths": [
+    "bot.py",
+    "dashboard.py",
+    "risk_guard.py",
+    "coop_bridge.py",
+    "strategies/",
+    "configs/",
+    ".vscode/"
+  ],
+  "allowed_cmds": [
+    "git",
+    "python"
+  ],
+  "require_approval": true
+}
