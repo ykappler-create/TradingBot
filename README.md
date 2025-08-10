@@ -1,4 +1,6 @@
-﻿# TradingBot
+[![CI](https://github.com/ykappler-create/TradingBot/actions/workflows/python-ci.yml/badge.svg)](https://github.com/ykappler-create/TradingBot/actions/workflows/python-ci.yml)
+
+# TradingBot
 
 Kurzbeschreibung: Swing-Trading-Bot (Alpaca/Bitget), mit Risiko-Guards & Reporting.
 
