@@ -1,7 +1,7 @@
 ruff==0.6.8
 black==24.4.2
 pytest==8.3.2
-mypy==1.10.0
+mypy==1.17.1
 pre-commit==3.7.1
 pip-audit==2.7.3
 pandas==2.2.2
