@@ -5,9 +5,12 @@
 # - Kann Bot/Bridge/Dashboard neu starten
 # - Schreibt Status nach agent_outbox/
 
-import os, json, time, subprocess, shutil, difflib, traceback
+import json
+import time
+import subprocess
+import difflib
+import traceback
 from pathlib import Path
-from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -63,7 +66,7 @@ def is_allowed_path(rel: str, policy) -> bool:
 
 
 def write_out(name: str, payload: Dict[str, Any]) -> Path:
-    fn = OUTBOX / f"{int(time.time()*1000)}_{name}.json"
+    fn = OUTBOX / f"{int(time.time() * 1000)}_{name}.json"
     fn.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return fn
 
@@ -110,7 +113,7 @@ def action_write_file(task, policy):
 
 def action_patch_file(task, policy):
     rel = task["path"]
-    patch = task["diff"]
+    _ = task["diff"]
     if not is_allowed_path(rel, policy):
         return write_out("reject", {"task": task, "reason": "path not allowed"})
     p = safe_path(rel)

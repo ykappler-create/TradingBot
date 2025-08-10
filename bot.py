@@ -32,7 +32,7 @@ def _now_ms() -> int:
 
 
 def _write_event(dirpath: Path, payload: dict) -> Path:
-    fn = dirpath / f"{_now_ms()}_{random.randrange(1,1_000_000):06d}.json"
+    fn = dirpath / f"{_now_ms()}_{random.randrange(1, 1_000_000):06d}.json"
     with open(fn, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
     return fn
@@ -120,7 +120,7 @@ except Exception:
         )
 
     def log_position_snapshot(exposures, avg_leverage):
-        fn = SNAP_DIR / f"positions_{_now_ms()}_{random.randrange(1,1_000_000):06d}.json"
+        fn = SNAP_DIR / f"positions_{_now_ms()}_{random.randrange(1, 1_000_000):06d}.json"
         with open(fn, "w", encoding="utf-8") as f:
             json.dump(
                 {
@@ -215,8 +215,8 @@ def get_bitget_candles(
                 try:
                     ts_raw = float(row[0])
                     ts = int(ts_raw / 1000) if ts_raw > 1e10 else int(ts_raw)
-                    o, h, l, c = float(row[1]), float(row[2]), float(row[3]), float(row[4])
-                    rows.append((ts, o, h, l, c))
+                    o, h, low, c = float(row[1]), float(row[2]), float(row[3]), float(row[4])
+                    rows.append((ts, o, h, low, c))
                 except Exception:
                     continue
             if not rows:

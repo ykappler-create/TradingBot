@@ -1,7 +1,9 @@
 # risk_guard.py — Drawdown Sentinel: melden, reagieren, verbessern
 # Läuft parallel zur Bridge & bot.py. Keine Börsen-Keys nötig.
 
-import os, json, time
+import os
+import json
+import time
 from pathlib import Path
 from datetime import datetime
 
@@ -102,7 +104,7 @@ def main():
         if st and st.get("last_update_ts") != last_seen_ts:
             last_seen_ts = st.get("last_update_ts")
 
-            day_pnl = float(
+            _ = float(
                 st.get("winrate_pct", 0.0)
             )  # Platzhalter – day PnL kommt besser über risk events
             max_dd = float(st.get("max_drawdown_pct", 0.0))

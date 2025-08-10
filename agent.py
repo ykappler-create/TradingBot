@@ -1,4 +1,4 @@
-from langchain import OpenAI, LLMChain, PromptTemplate
+from langchain import OpenAI
 from langchain.agents import initialize_agent, Tool
 
 # Initialisiere LLM

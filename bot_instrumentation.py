@@ -1,7 +1,10 @@
 # bot_instrumentation.py
-import json, os, time, uuid
+import json
+import os
+import time
+import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 BRIDGE_OUT = Path(os.getenv("BRIDGE_OUT", "bridge_out"))
 EVENTS_DIR = BRIDGE_OUT / "events"
