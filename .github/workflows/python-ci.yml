@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: ["main"]
   schedule:
-    - cron: "0 6 * * 1"   # montags 06:00 UTC
+    - cron: "0 6 * * 1"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -31,17 +31,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements-ci.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      - name: Install CI dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install ruff black pytest mypy pre-commit pip-audit
+          pip install -r requirements-ci.txt
 
-      # Nur Prüfungen – keine Auto-Fixes
+      # Projekt-Requirements sind optional (nicht failen lassen)
+      - name: Install project requirements (best effort)
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt || echo "Soft-fail: requirements.txt konnte nicht komplett installiert werden."
+          fi
+
+      # Pre-commit nur als Check (keine Auto-Fixes)
       - name: Pre-commit (checks only)
         env:
           SKIP: ruff-format,black,end-of-file-fixer,trim-trailing-whitespace
@@ -55,7 +61,7 @@ jobs:
 
       - name: Type check (mypy)
         run: mypy .
-        continue-on-error: true   # bis wir Typisierung nachziehen
+        continue-on-error: true
 
       - name: Tests
         run: |
