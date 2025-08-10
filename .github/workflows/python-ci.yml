@@ -1,17 +1,24 @@
-﻿name: CI
+name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  schedule:
+    - cron: "0 6 * * 1"   # montags 06:00 UTC wÃ¶chentlicher Gesundheitscheck
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
+
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +39,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install ruff black pytest mypy pre-commit
+          pip install ruff black pytest mypy pre-commit pip-audit
 
       - name: Pre-commit (enforce)
         run: pre-commit run --all-files --show-diff-on-failure
@@ -49,9 +56,9 @@ jobs:
       - name: Tests
         run: |
           if [ -d tests ]; then
-            pytest -q
+            pytest -q --maxfail=1 --disable-warnings --junitxml=pytest.xml
           else
-            echo "No tests/ folder – skipping tests."
+            echo "No tests/ folder â€“ skipping tests." && echo "::notice::No tests"
           fi
 
       - name: Backtest report (if CSV present)
@@ -59,12 +66,24 @@ jobs:
           if [ -f bridge_out/reports/equity_curve.csv ]; then
             python scripts/backtest.py --csv bridge_out/reports/equity_curve.csv --out bridge_out/reports/equity_curve.png
           else
-            echo "No equity_curve.csv – skipping backtest report."
+            echo "No equity_curve.csv â€“ skipping backtest report."
           fi
 
-      - name: Upload equity report
+      - name: Vulnerability scan (pip-audit)
+        run: |
+          if [ -f requirements.txt ]; then
+            pip-audit -r requirements.txt -f cyclonedx -o sbom.json || true
+          else
+            pip-audit -f cyclonedx -o sbom.json || true
+          fi
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: equity-report
-          path: bridge_out/reports/equity_curve.png
+          name: ci-artifacts-${{ matrix.python-version }}
+          path: |
+            pytest.xml
+            bridge_out/reports/equity_curve.png
+            trading_log.csv
+            sbom.json
           if-no-files-found: ignore
