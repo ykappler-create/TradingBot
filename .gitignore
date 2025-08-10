@@ -1,14 +1,17 @@
-cd "C:\Users\ykapp\Desktop\TradingBot"
-
-@"
-# Python / Projekt
+# Python
 .venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Logs/Outputs
 *.log
-*.sqlite3
+trading_log.csv
+bridge_out/
 
 # Secrets
 .env
@@ -19,8 +22,3 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
-"@ | Out-File -Encoding utf8 .gitignore
-
-# Generated outputs
-bridge_out/
-trading_log.csv
