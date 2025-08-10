@@ -53,3 +53,18 @@ jobs:
           else
             echo "No tests/ folder – skipping tests."
           fi
+
+      - name: Backtest report (if CSV present)
+        run: |
+          if [ -f bridge_out/reports/equity_curve.csv ]; then
+            python scripts/backtest.py --csv bridge_out/reports/equity_curve.csv --out bridge_out/reports/equity_curve.png
+          else
+            echo "No equity_curve.csv – skipping backtest report."
+          fi
+
+      - name: Upload equity report
+        uses: actions/upload-artifact@v4
+        with:
+          name: equity-report
+          path: bridge_out/reports/equity_curve.png
+          if-no-files-found: ignore
