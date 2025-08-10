@@ -15,8 +15,9 @@ CONTROL.mkdir(parents=True, exist_ok=True)
 STATUS_PATH = REPORTS / "status.json"
 
 # Schwellen aus deiner Policy
-MAX_DD_LIMIT = 8.0     # %
+MAX_DD_LIMIT = 8.0  # %
 DAY_LOSS_LIMIT = -3.0  # %
+
 
 def load_json(path: Path):
     try:
@@ -25,11 +26,13 @@ def load_json(path: Path):
     except Exception:
         return None
 
+
 def latest_snapshot():
     snaps = sorted(SNAPSHOTS.glob("positions_*.json"))
     if not snaps:
         return None
     return load_json(snaps[-1])
+
 
 def worst_offenders(snapshot, topn=2):
     # ohne unrealized PnL schätzen wir „schlimmste“ über Notional
@@ -42,26 +45,33 @@ def worst_offenders(snapshot, topn=2):
         syms.append(e.get("symbol"))
     return syms
 
+
 def write_control(pause: bool, to_close_symbols, tuning):
     # mode.json: globale Flags (Pause neuer Signale)
-    mode = {"pause_new_signals": bool(pause), "ts": int(time.time()*1000)}
+    mode = {"pause_new_signals": bool(pause), "ts": int(time.time() * 1000)}
     with open(CONTROL / "mode.json", "w", encoding="utf-8") as f:
         json.dump(mode, f, ensure_ascii=False, indent=2)
 
     # force_close.json: Liste von Symbolen, die sofort geschlossen werden sollen
     if to_close_symbols:
         with open(CONTROL / "force_close.json", "w", encoding="utf-8") as f:
-            json.dump({"symbols": to_close_symbols, "ts": int(time.time()*1000)}, f, ensure_ascii=False, indent=2)
+            json.dump(
+                {"symbols": to_close_symbols, "ts": int(time.time() * 1000)},
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
     # tuning.json: neue, konservativere Parameter
     if tuning:
         with open(CONTROL / "tuning.json", "w", encoding="utf-8") as f:
             json.dump(tuning, f, ensure_ascii=False, indent=2)
 
+
 def write_alert_report(kind, status, offenders, tuning):
     alert = {
-        "ts": int(time.time()*1000),
-        "when": datetime.utcnow().isoformat()+"Z",
+        "ts": int(time.time() * 1000),
+        "when": datetime.utcnow().isoformat() + "Z",
         "kind": kind,
         "status": status,
         "offenders": offenders,
@@ -72,14 +82,16 @@ def write_alert_report(kind, status, offenders, tuning):
         json.dump(alert, f, ensure_ascii=False, indent=2)
     print("[guard] ALERT:", kind, "->", fn)
 
+
 def propose_tuning(status):
     # Vorschlag: Risiko runter, Stop breiter, weniger gleichzeitige Positionen
     return {
         "risk_per_trade_pct": 0.005,  # 0.5%
-        "atr_stop_mult": 1.6,         # breiterer Stop
+        "atr_stop_mult": 1.6,  # breiterer Stop
         "atr_tp_mult": 2.2,
-        "max_concurrent_positions": 2
+        "max_concurrent_positions": 2,
     }
+
 
 def main():
     print("[guard] running… watching", STATUS_PATH)
@@ -90,7 +102,9 @@ def main():
         if st and st.get("last_update_ts") != last_seen_ts:
             last_seen_ts = st.get("last_update_ts")
 
-            day_pnl = float(st.get("winrate_pct", 0.0))  # Platzhalter – day PnL kommt besser über risk events
+            day_pnl = float(
+                st.get("winrate_pct", 0.0)
+            )  # Platzhalter – day PnL kommt besser über risk events
             max_dd = float(st.get("max_drawdown_pct", 0.0))
 
             # Besser: letzter Risk-Event auswerten (day_pnl_pct, rolling_dd_pct)
@@ -100,7 +114,7 @@ def main():
                 "realized_pnl": st.get("realized_pnl"),
                 "profit_factor": st.get("profit_factor"),
                 "winrate_pct": st.get("winrate_pct"),
-                "max_drawdown_pct": max_dd
+                "max_drawdown_pct": max_dd,
             }
 
             # Entscheide anhand MaxDD aus status.json UND (falls vorhanden) rolling_dd/day via guard-eigenen Logik
@@ -121,6 +135,7 @@ def main():
                 write_control(False, [], None)
 
         time.sleep(15)  # alle 15s prüfen
+
 
 if __name__ == "__main__":
     main()

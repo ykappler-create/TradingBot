@@ -24,8 +24,8 @@ import streamlit as st
 st.set_page_config(page_title="TradingBot – Live Performance", layout="wide")
 BRIDGE_OUT = Path(os.getenv("BRIDGE_OUT", "bridge_out"))
 REPORTS = BRIDGE_OUT / "reports"
-EVENTS  = BRIDGE_OUT / "events"
-SNAPS   = BRIDGE_OUT / "snapshots"
+EVENTS = BRIDGE_OUT / "events"
+SNAPS = BRIDGE_OUT / "snapshots"
 CONTROL = BRIDGE_OUT / "control"
 
 for p in [REPORTS, EVENTS, SNAPS, CONTROL]:
@@ -34,6 +34,7 @@ for p in [REPORTS, EVENTS, SNAPS, CONTROL]:
 REFRESH_SECS = 10
 GATE_PF = 1.2
 GATE_MAX_DD = 8.0
+
 
 # -----------------------------
 # Helper
@@ -45,32 +46,37 @@ def load_json(path: Path) -> Dict[str, Any] | None:
     except Exception:
         return None
 
+
 def ts2dt(ts_ms) -> str:
     try:
-        return datetime.utcfromtimestamp(int(ts_ms)/1000.0).strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.utcfromtimestamp(int(ts_ms) / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
     except Exception:
         return "-"
+
 
 def latest_status() -> Dict[str, Any]:
     return load_json(REPORTS / "status.json") or {}
 
+
 def equity_curve_df() -> pd.DataFrame:
     csv = REPORTS / "equity_curve.csv"
     if not csv.exists():
-        return pd.DataFrame(columns=["ts_ms","equity"])
+        return pd.DataFrame(columns=["ts_ms", "equity"])
     try:
         df = pd.read_csv(csv)
-        if not {"ts_ms","equity"}.issubset(df.columns):
-            return pd.DataFrame(columns=["ts_ms","equity"])
+        if not {"ts_ms", "equity"}.issubset(df.columns):
+            return pd.DataFrame(columns=["ts_ms", "equity"])
         return df
     except Exception:
-        return pd.DataFrame(columns=["ts_ms","equity"])
+        return pd.DataFrame(columns=["ts_ms", "equity"])
+
 
 def latest_snapshot() -> Dict[str, Any]:
     snaps = sorted(SNAPS.glob("positions_*.json"))
     if not snaps:
         return {}
     return load_json(snaps[-1]) or {}
+
 
 def read_trade_events(limit: int = 5000) -> List[Dict[str, Any]]:
     trade_dir = EVENTS / "trades"
@@ -84,6 +90,7 @@ def read_trade_events(limit: int = 5000) -> List[Dict[str, Any]]:
         except Exception:
             pass
     return rows
+
 
 def compute_drawdown_from_pnls(pnls: List[float], start_equity: float) -> float:
     """Cumulative equity from start_equity + pnls; return Max DD % in window."""
@@ -100,6 +107,7 @@ def compute_drawdown_from_pnls(pnls: List[float], start_equity: float) -> float:
                 max_dd = dd
     return float(max_dd)
 
+
 def compute_profit_factor(pnls: List[float]) -> float:
     wins = [p for p in pnls if p > 0]
     losses = [abs(p) for p in pnls if p < 0]
@@ -109,7 +117,10 @@ def compute_profit_factor(pnls: List[float]) -> float:
         return float(sum(wins) / 1e-9)
     return float(sum(wins) / sum(losses))
 
-def filter_close_pnls_last_days(trades: List[Dict[str, Any]], days: int) -> Tuple[List[float], List[Dict[str, Any]]]:
+
+def filter_close_pnls_last_days(
+    trades: List[Dict[str, Any]], days: int
+) -> Tuple[List[float], List[Dict[str, Any]]]:
     cutoff = int((datetime.utcnow() - timedelta(days=days)).timestamp() * 1000)
     pnls: List[float] = []
     closes: List[Dict[str, Any]] = []
@@ -122,6 +133,7 @@ def filter_close_pnls_last_days(trades: List[Dict[str, Any]], days: int) -> Tupl
                 closes.append(t)
     return pnls, closes
 
+
 # -----------------------------
 # Sidebar / Header
 # -----------------------------
@@ -132,11 +144,11 @@ if st.sidebar.button("Jetzt aktualisieren", use_container_width=True):
     st.rerun()
 
 status = latest_status()
-paper_capital  = float(status.get("paper_capital", 10000.0))
-realized_pnl   = float(status.get("realized_pnl", 0.0))
-profit_factor  = float(status.get("profit_factor", 0.0))
-winrate_pct    = float(status.get("winrate_pct", 0.0))
-max_dd_pct     = float(status.get("max_drawdown_pct", 0.0))
+paper_capital = float(status.get("paper_capital", 10000.0))
+realized_pnl = float(status.get("realized_pnl", 0.0))
+profit_factor = float(status.get("profit_factor", 0.0))
+winrate_pct = float(status.get("winrate_pct", 0.0))
+max_dd_pct = float(status.get("max_drawdown_pct", 0.0))
 last_update_ts = status.get("last_update_ts")
 
 c1, c2, c3, c4, c5 = st.columns(5)
@@ -156,12 +168,11 @@ st.subheader("📈 Equity-Kurve (seit Start)")
 eq = equity_curve_df()
 if not eq.empty:
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=pd.to_datetime(eq["ts_ms"], unit="ms"),
-        y=eq["equity"],
-        mode="lines",
-        name="Equity"
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=pd.to_datetime(eq["ts_ms"], unit="ms"), y=eq["equity"], mode="lines", name="Equity"
+        )
+    )
     fig.update_layout(margin=dict(l=10, r=10, t=20, b=10), height=300)
     st.plotly_chart(fig, use_container_width=True)
 else:
@@ -192,20 +203,27 @@ if pnls_14d:
         # Button: Anfrage schreiben
         if st.button("Echtgeld-Anfrage vorbereiten (Coinbase/Kraken/Bitget/Trade Republic)"):
             payload = {
-                "ts": int(time.time()*1000),
-                "when": datetime.utcnow().isoformat()+"Z",
-                "gate": {"net_pnl_14d": net_pnl_14d, "profit_factor_14d": pf_14d, "max_dd_14d": max_dd_14d},
+                "ts": int(time.time() * 1000),
+                "when": datetime.utcnow().isoformat() + "Z",
+                "gate": {
+                    "net_pnl_14d": net_pnl_14d,
+                    "profit_factor_14d": pf_14d,
+                    "max_dd_14d": max_dd_14d,
+                },
                 "request": "APPROVAL_FOR_REAL_MONEY_CONNECTION",
-                "notes": "Bitte bestätigen, welche Börse(n) in DE verbunden werden sollen."
+                "notes": "Bitte bestätigen, welche Börse(n) in DE verbunden werden sollen.",
             }
             out = REPORTS / f"gate_request_{payload['ts']}.json"
             out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
             st.success(f"Anfrage geschrieben: {out}")
     else:
         reasons = []
-        if not (net_pnl_14d > 0.0): reasons.append("Net PnL ≤ 0")
-        if not (pf_14d > GATE_PF): reasons.append(f"Profit Factor ≤ {GATE_PF}")
-        if not (max_dd_14d < GATE_MAX_DD): reasons.append(f"Max DD ≥ {GATE_MAX_DD}%")
+        if not (net_pnl_14d > 0.0):
+            reasons.append("Net PnL ≤ 0")
+        if not (pf_14d > GATE_PF):
+            reasons.append(f"Profit Factor ≤ {GATE_PF}")
+        if not (max_dd_14d < GATE_MAX_DD):
+            reasons.append(f"Max DD ≥ {GATE_MAX_DD}%")
         st.error("Gate **nicht** erfüllt ❌ – " + ", ".join(reasons))
         st.caption("Der Bot läuft weiter im Paper-Mode. Optimierung/Feintuning empfohlen.")
 
@@ -222,13 +240,15 @@ pos_df = pd.DataFrame(snap.get("exposures", []))
 if not pos_df.empty:
     pos_df = pos_df.sort_values("notional_eur", ascending=False)
     st.dataframe(pos_df, use_container_width=True)
-    if {"symbol","notional_eur"}.issubset(pos_df.columns):
+    if {"symbol", "notional_eur"}.issubset(pos_df.columns):
         exp_fig = go.Figure()
-        exp_fig.add_trace(go.Bar(
-            x=pos_df["symbol"].astype(str),
-            y=pos_df["notional_eur"].astype(float),
-            name="Exposure €"
-        ))
+        exp_fig.add_trace(
+            go.Bar(
+                x=pos_df["symbol"].astype(str),
+                y=pos_df["notional_eur"].astype(float),
+                name="Exposure €",
+            )
+        )
         exp_fig.update_layout(margin=dict(l=10, r=10, t=20, b=10), height=260)
         st.plotly_chart(exp_fig, use_container_width=True)
 else:
@@ -245,26 +265,30 @@ if trades:
         symbol = t.get("symbol")
         ts = t.get("ts")
         if evt == "open":
-            view_rows.append({
-                "Zeit (UTC)": ts2dt(ts),
-                "Event": "OPEN",
-                "Symbol": symbol,
-                "Preis/Exit": t.get("price"),
-                "Qty": t.get("qty"),
-                "Exchange": t.get("exchange"),
-                "Strategie": t.get("strategy_id"),
-                "Rationale": t.get("rationale", ""),
-            })
+            view_rows.append(
+                {
+                    "Zeit (UTC)": ts2dt(ts),
+                    "Event": "OPEN",
+                    "Symbol": symbol,
+                    "Preis/Exit": t.get("price"),
+                    "Qty": t.get("qty"),
+                    "Exchange": t.get("exchange"),
+                    "Strategie": t.get("strategy_id"),
+                    "Rationale": t.get("rationale", ""),
+                }
+            )
         elif evt == "close":
-            view_rows.append({
-                "Zeit (UTC)": ts2dt(ts),
-                "Event": "CLOSE",
-                "Symbol": symbol,
-                "Preis/Exit": t.get("exit_price"),
-                "PnL €": t.get("profit"),
-                "PnL %": t.get("pnl_pct"),
-                "Fees": t.get("fees", 0.0),
-            })
+            view_rows.append(
+                {
+                    "Zeit (UTC)": ts2dt(ts),
+                    "Event": "CLOSE",
+                    "Symbol": symbol,
+                    "Preis/Exit": t.get("exit_price"),
+                    "PnL €": t.get("profit"),
+                    "PnL %": t.get("pnl_pct"),
+                    "Fees": t.get("fees", 0.0),
+                }
+            )
     tdf = pd.DataFrame(view_rows)
     st.dataframe(tdf, use_container_width=True)
 else:

@@ -14,8 +14,10 @@ EVENTS_DIR.mkdir(parents=True, exist_ok=True)
 
 PAPER_CAPITAL = float(os.getenv("PAPER_CAPITAL", "10000"))
 
+
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
 
 def _write_event(kind: str, payload: Dict[str, Any]) -> Path:
     ts = _now_ms()
@@ -25,53 +27,76 @@ def _write_event(kind: str, payload: Dict[str, Any]) -> Path:
         json.dump(payload, f, ensure_ascii=False)
     return fn
 
+
 # --- Trades ---
 
-def log_trade_open(symbol: str, side: str, qty: float, price: float, leverage: float,
-                   exchange: str, strategy_id: str, rationale: str) -> Path:
-    return _write_event("trades", {
-        "event": "open",
-        "symbol": symbol,
-        "side": side,             # "long" | "short"
-        "qty": qty,
-        "price": price,
-        "leverage": leverage,
-        "exchange": exchange,     # "alpaca" | "bitget"
-        "strategy_id": strategy_id,
-        "rationale": rationale,
-    })
+
+def log_trade_open(
+    symbol: str,
+    side: str,
+    qty: float,
+    price: float,
+    leverage: float,
+    exchange: str,
+    strategy_id: str,
+    rationale: str,
+) -> Path:
+    return _write_event(
+        "trades",
+        {
+            "event": "open",
+            "symbol": symbol,
+            "side": side,  # "long" | "short"
+            "qty": qty,
+            "price": price,
+            "leverage": leverage,
+            "exchange": exchange,  # "alpaca" | "bitget"
+            "strategy_id": strategy_id,
+            "rationale": rationale,
+        },
+    )
 
 
-def log_trade_close(order_ref: str, symbol: str, exit_price: float, profit: float,
-                    pnl_pct: float, fees: float = 0.0) -> Path:
-    return _write_event("trades", {
-        "event": "close",
-        "order_ref": order_ref,
-        "symbol": symbol,
-        "exit_price": exit_price,
-        "profit": profit,
-        "pnl_pct": pnl_pct,
-        "fees": fees,
-    })
+def log_trade_close(
+    order_ref: str, symbol: str, exit_price: float, profit: float, pnl_pct: float, fees: float = 0.0
+) -> Path:
+    return _write_event(
+        "trades",
+        {
+            "event": "close",
+            "order_ref": order_ref,
+            "symbol": symbol,
+            "exit_price": exit_price,
+            "profit": profit,
+            "pnl_pct": pnl_pct,
+            "fees": fees,
+        },
+    )
+
 
 # --- Equity & Risiko ---
 
+
 def log_equity(equity: float) -> Path:
-    return _write_event("equity", {
-        "equity": equity
-    })
+    return _write_event("equity", {"equity": equity})
 
 
-def log_risk(open_risk_pct: float, day_pnl_pct: float, rolling_dd_pct: float,
-             mode: str = "normal") -> Path:
-    return _write_event("risk", {
-        "open_risk_pct": open_risk_pct,
-        "day_pnl_pct": day_pnl_pct,
-        "rolling_dd_pct": rolling_dd_pct,
-        "mode": mode,  # normal | defensive | ultra_defensive
-    })
+def log_risk(
+    open_risk_pct: float, day_pnl_pct: float, rolling_dd_pct: float, mode: str = "normal"
+) -> Path:
+    return _write_event(
+        "risk",
+        {
+            "open_risk_pct": open_risk_pct,
+            "day_pnl_pct": day_pnl_pct,
+            "rolling_dd_pct": rolling_dd_pct,
+            "mode": mode,  # normal | defensive | ultra_defensive
+        },
+    )
+
 
 # --- Snapshots (z. B. Exposure je Asset) ---
+
 
 def log_position_snapshot(exposures: List[Dict[str, Any]], avg_leverage: float) -> Path:
     fn = SNAP_DIR / f"positions_{_now_ms()}_{uuid.uuid4().hex}.json"

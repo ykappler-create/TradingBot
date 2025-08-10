@@ -22,19 +22,29 @@ for p in [INBOX, OUTBOX, POLICY_DIR, CONTROL]:
 
 # ---- Policies ----
 DEFAULT_POLICY = {
-    "allowed_paths": ["bot.py", "dashboard.py", "risk_guard.py", "coop_bridge.py", "strategies/", "configs/", ".vscode/"],
+    "allowed_paths": [
+        "bot.py",
+        "dashboard.py",
+        "risk_guard.py",
+        "coop_bridge.py",
+        "strategies/",
+        "configs/",
+        ".vscode/",
+    ],
     "allowed_cmds": ["git", "python"],
-    "require_approval": True
+    "require_approval": True,
 }
 POLICY_FILE = POLICY_DIR / "whitelist.json"
 if not POLICY_FILE.exists():
     POLICY_FILE.write_text(json.dumps(DEFAULT_POLICY, indent=2), encoding="utf-8")
+
 
 def load_policy() -> Dict[str, Any]:
     try:
         return json.loads(POLICY_FILE.read_text(encoding="utf-8"))
     except Exception:
         return DEFAULT_POLICY
+
 
 # ---- Helpers ----
 def safe_path(rel: str) -> Path:
@@ -43,27 +53,38 @@ def safe_path(rel: str) -> Path:
         raise RuntimeError("Unsafe path outside workspace")
     return p
 
+
 def is_allowed_path(rel: str, policy) -> bool:
-    rel = rel.replace("\\","/")
+    rel = rel.replace("\\", "/")
     for pat in policy.get("allowed_paths", []):
         if rel == pat or rel.startswith(pat.rstrip("/") + "/"):
             return True
     return False
+
 
 def write_out(name: str, payload: Dict[str, Any]) -> Path:
     fn = OUTBOX / f"{int(time.time()*1000)}_{name}.json"
     fn.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return fn
 
-def make_diff(old: str, new: str, path: str) -> str:
-    return "".join(difflib.unified_diff(old.splitlines(keepends=True), new.splitlines(keepends=True), fromfile=path, tofile=path))
 
-def run_cmd(cmd: List[str], cwd: Optional[Path]=None) -> Dict[str, Any]:
+def make_diff(old: str, new: str, path: str) -> str:
+    return "".join(
+        difflib.unified_diff(
+            old.splitlines(keepends=True), new.splitlines(keepends=True), fromfile=path, tofile=path
+        )
+    )
+
+
+def run_cmd(cmd: List[str], cwd: Optional[Path] = None) -> Dict[str, Any]:
     try:
-        proc = subprocess.run(cmd, cwd=str(cwd or ROOT), capture_output=True, text=True, timeout=300)
+        proc = subprocess.run(
+            cmd, cwd=str(cwd or ROOT), capture_output=True, text=True, timeout=300
+        )
         return {"cmd": cmd, "code": proc.returncode, "stdout": proc.stdout, "stderr": proc.stderr}
     except Exception as e:
         return {"cmd": cmd, "error": str(e)}
+
 
 # ---- Actions ----
 def action_write_file(task, policy):
@@ -74,7 +95,7 @@ def action_write_file(task, policy):
     before = p.read_text(encoding="utf-8") if p.exists() else ""
     after = task["content"]
     diff = make_diff(before, after, rel)
-    proposal = {"type":"write_file","path":rel,"diff":diff}
+    proposal = {"type": "write_file", "path": rel, "diff": diff}
     out = write_out("proposal", proposal)
     if not policy.get("require_approval", True):
         approve = True
@@ -86,8 +107,10 @@ def action_write_file(task, policy):
         return write_out("applied", {"task": task, "path": rel})
     return write_out("pending", {"task": task, "path": rel})
 
+
 def action_patch_file(task, policy):
-    rel = task["path"]; patch = task["diff"]
+    rel = task["path"]
+    patch = task["diff"]
     if not is_allowed_path(rel, policy):
         return write_out("reject", {"task": task, "reason": "path not allowed"})
     p = safe_path(rel)
@@ -97,13 +120,14 @@ def action_patch_file(task, policy):
     if after is None:
         return write_out("reject", {"task": task, "reason": "after required for safe patch"})
     diff = make_diff(before, after, rel)
-    proposal = {"type":"patch_file","path":rel,"diff":diff}
+    proposal = {"type": "patch_file", "path": rel, "diff": diff}
     out = write_out("proposal", proposal)
     approve = wait_for_approval(out) if policy.get("require_approval", True) else True
     if approve:
         p.write_text(after, encoding="utf-8")
         return write_out("applied", {"task": task, "path": rel})
     return write_out("pending", {"task": task, "path": rel})
+
 
 def action_run_command(task, policy):
     cmd = task["cmd"]
@@ -113,10 +137,15 @@ def action_run_command(task, policy):
     res = run_cmd(cmd)
     return write_out("command_result", res)
 
+
 def action_restart_bot(_task, _policy):
     # simple kill & relaunch through a bootstrapper script
     # You can adapt to your VSCode launch or a Windows service later.
-    return write_out("info", {"msg":"Restart request received – use VS Code Run Compound to manage both processes."})
+    return write_out(
+        "info",
+        {"msg": "Restart request received – use VS Code Run Compound to manage both processes."},
+    )
+
 
 def wait_for_approval(proposal_path: Path, timeout_sec: int = 600) -> bool:
     """
@@ -137,6 +166,7 @@ def wait_for_approval(proposal_path: Path, timeout_sec: int = 600) -> bool:
         time.sleep(2)
     return False
 
+
 ACTIONS = {
     "write_file": action_write_file,
     "patch_file": action_patch_file,
@@ -144,13 +174,17 @@ ACTIONS = {
     "restart_bot": action_restart_bot,
 }
 
+
 # ---- Watcher ----
 class InboxHandler(FileSystemEventHandler):
     def on_created(self, event):
-        if event.is_directory: return
-        if not event.src_path.endswith(".json"): return
+        if event.is_directory:
+            return
+        if not event.src_path.endswith(".json"):
+            return
         time.sleep(0.2)
         self.process(Path(event.src_path))
+
     def process(self, path: Path):
         try:
             task = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -159,9 +193,12 @@ class InboxHandler(FileSystemEventHandler):
             if kind in ACTIONS:
                 ACTIONS[kind](task, policy)
             else:
-                write_out("reject", {"task": task, "reason":"unknown type"})
+                write_out("reject", {"task": task, "reason": "unknown type"})
         except Exception as e:
-            write_out("error", {"file": path.name, "error": str(e), "trace": traceback.format_exc()})
+            write_out(
+                "error", {"file": path.name, "error": str(e), "trace": traceback.format_exc()}
+            )
+
 
 def main():
     print("[agent] running… watching", INBOX)
@@ -175,7 +212,9 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        obs.stop(); obs.join()
+        obs.stop()
+        obs.join()
+
 
 if __name__ == "__main__":
     main()

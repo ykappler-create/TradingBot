@@ -14,6 +14,7 @@ PAPER_CAPITAL = float(os.getenv("PAPER_CAPITAL", "10000"))
 
 # --- Utils ---
 
+
 def _read_json_files(path: Path) -> List[Dict[str, Any]]:
     items: List[Dict[str, Any]] = []
     for fn in sorted(path.glob("*.json")):
@@ -24,7 +25,9 @@ def _read_json_files(path: Path) -> List[Dict[str, Any]]:
             pass
     return items
 
+
 # --- Metrics ---
+
 
 def compute_trade_metrics(trades: List[Dict[str, Any]]) -> Tuple[float, float, float, float]:
     """Return (realized_pnl, profit_factor, winrate, max_drawdown_pct)"""
@@ -104,10 +107,7 @@ def publish_status():
         "exposures": snap.get("exposures", []),
         "avg_leverage": snap.get("avg_leverage", 0.0),
         "last_update_ts": int(time.time() * 1000),
-        "counts": {
-            "trades_total": len(trades),
-            "equity_points": len(pts)
-        }
+        "counts": {"trades_total": len(trades), "equity_points": len(pts)},
     }
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -122,6 +122,7 @@ def publish_status():
 
 
 # --- Optional: Git Publishing ---
+
 
 def git(*args: str):
     subprocess.check_call(["git", *args], cwd=str(Path.cwd()))
@@ -144,13 +145,17 @@ def git_publish():
         author_email = os.getenv("GH_AUTHOR_EMAIL", "bridge@example.com")
         msg = f"bridge: publish {int(time.time())}"
         env = os.environ.copy()
-        env.update({
-            "GIT_AUTHOR_NAME": author_name,
-            "GIT_AUTHOR_EMAIL": author_email,
-            "GIT_COMMITTER_NAME": author_name,
-            "GIT_COMMITTER_EMAIL": author_email,
-        })
-        subprocess.check_call(["git", "commit", "-m", msg, "--allow-empty"], cwd=str(Path.cwd()), env=env)
+        env.update(
+            {
+                "GIT_AUTHOR_NAME": author_name,
+                "GIT_AUTHOR_EMAIL": author_email,
+                "GIT_COMMITTER_NAME": author_name,
+                "GIT_COMMITTER_EMAIL": author_email,
+            }
+        )
+        subprocess.check_call(
+            ["git", "commit", "-m", msg, "--allow-empty"], cwd=str(Path.cwd()), env=env
+        )
         # push
         branch = os.getenv("GIT_BRANCH", "main")
         git("push", "-u", "origin", branch)
@@ -161,9 +166,12 @@ def git_publish():
 
 # --- CLI ---
 
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--publish-interval", type=int, default=60, help="Sekunden zwischen Aggregationen")
+    ap.add_argument(
+        "--publish-interval", type=int, default=60, help="Sekunden zwischen Aggregationen"
+    )
     args = ap.parse_args()
 
     print("[bridge] running; interval =", args.publish_interval, "s; out =", REPORTS_DIR)
@@ -173,6 +181,7 @@ def main():
         except Exception as e:
             print("[bridge] error:", e)
         time.sleep(args.publish_interval)
+
 
 if __name__ == "__main__":
     main()
