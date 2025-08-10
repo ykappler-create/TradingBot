@@ -1,14 +1,13 @@
 # risk_guard.py — Drawdown Sentinel: melden, reagieren, verbessern
-# Läuft parallel zur Bridge & bot.py. Keine Börsen-Keys nötig.
+# Laeuft parallel zur Bridge & bot.py. Keine Boersen-Keys noetig.
 
-import os
 import json
 import time
 from pathlib import Path
 from datetime import datetime
 
 ROOT = Path.cwd()
-BRIDGE_OUT = Path(os.getenv("BRIDGE_OUT", "bridge_out"))
+BRIDGE_OUT = ROOT / "bridge_out"
 REPORTS = BRIDGE_OUT / "reports"
 SNAPSHOTS = BRIDGE_OUT / "snapshots"
 CONTROL = BRIDGE_OUT / "control"
@@ -16,9 +15,25 @@ CONTROL.mkdir(parents=True, exist_ok=True)
 
 STATUS_PATH = REPORTS / "status.json"
 
-# Schwellen aus deiner Policy
+# --------- Defaults + optionales Nachladen aus config (ohne E402) ----------
 MAX_DD_LIMIT = 8.0  # %
 DAY_LOSS_LIMIT = -3.0  # %
+
+
+def _refresh_limits():
+    """Optional: aus config/config.yaml nachladen; faellt sonst auf Defaults zurueck."""
+    global MAX_DD_LIMIT, DAY_LOSS_LIMIT
+    try:
+        from config_loader import load_config  # lokal importiert -> keine E402
+
+        cfg = load_config()
+        MAX_DD_LIMIT = float(cfg.risk.max_drawdown_pct)
+        DAY_LOSS_LIMIT = float(cfg.risk.day_loss_limit_pct)
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
 
 
 def load_json(path: Path):
@@ -37,7 +52,7 @@ def latest_snapshot():
 
 
 def worst_offenders(snapshot, topn=2):
-    # ohne unrealized PnL schätzen wir „schlimmste“ über Notional
+    # ohne unrealized PnL schaetzen wir „schlimmste“ ueber Notional
     if not snapshot or "exposures" not in snapshot:
         return []
     exposures = snapshot["exposures"]
@@ -49,12 +64,10 @@ def worst_offenders(snapshot, topn=2):
 
 
 def write_control(pause: bool, to_close_symbols, tuning):
-    # mode.json: globale Flags (Pause neuer Signale)
     mode = {"pause_new_signals": bool(pause), "ts": int(time.time() * 1000)}
     with open(CONTROL / "mode.json", "w", encoding="utf-8") as f:
         json.dump(mode, f, ensure_ascii=False, indent=2)
 
-    # force_close.json: Liste von Symbolen, die sofort geschlossen werden sollen
     if to_close_symbols:
         with open(CONTROL / "force_close.json", "w", encoding="utf-8") as f:
             json.dump(
@@ -64,7 +77,6 @@ def write_control(pause: bool, to_close_symbols, tuning):
                 indent=2,
             )
 
-    # tuning.json: neue, konservativere Parameter
     if tuning:
         with open(CONTROL / "tuning.json", "w", encoding="utf-8") as f:
             json.dump(tuning, f, ensure_ascii=False, indent=2)
@@ -79,24 +91,25 @@ def write_alert_report(kind, status, offenders, tuning):
         "offenders": offenders,
         "tuning": tuning,
     }
-    fn = REPORTS / f"alert_{alert['ts']}.json"
+    fn = REPORTS / f"guard_alert_{alert['ts']}.json"
     with open(fn, "w", encoding="utf-8") as f:
         json.dump(alert, f, ensure_ascii=False, indent=2)
     print("[guard] ALERT:", kind, "->", fn)
 
 
 def propose_tuning(status):
-    # Vorschlag: Risiko runter, Stop breiter, weniger gleichzeitige Positionen
     return {
         "risk_per_trade_pct": 0.005,  # 0.5%
-        "atr_stop_mult": 1.6,  # breiterer Stop
+        "atr_stop_mult": 1.6,
         "atr_tp_mult": 2.2,
         "max_concurrent_positions": 2,
     }
 
 
 def main():
-    print("[guard] running… watching", STATUS_PATH)
+    # nur EINMAL Limits aus config ziehen (falls vorhanden), sonst Defaults behalten
+    _refresh_limits()
+    print("[guard] running... watching", STATUS_PATH)
     last_seen_ts = None
 
     while True:
@@ -106,11 +119,10 @@ def main():
 
             _ = float(
                 st.get("winrate_pct", 0.0)
-            )  # Platzhalter – day PnL kommt besser über risk events
+            )  # Platzhalter – day PnL waere besser via risk events
             max_dd = float(st.get("max_drawdown_pct", 0.0))
 
-            # Besser: letzter Risk-Event auswerten (day_pnl_pct, rolling_dd_pct)
-            snap = latest_snapshot()  # für exposures
+            snap = latest_snapshot()  # fuer exposures
             status = {
                 "paper_capital": st.get("paper_capital"),
                 "realized_pnl": st.get("realized_pnl"),
@@ -119,24 +131,21 @@ def main():
                 "max_drawdown_pct": max_dd,
             }
 
-            # Entscheide anhand MaxDD aus status.json UND (falls vorhanden) rolling_dd/day via guard-eigenen Logik
             trigger = None
-            if max_dd > MAX_DD_LIMIT:
-                trigger = "ROLLING_MAX_DRAWDOWN_EXCEEDED"
-
-            # Fallback: wenn kein daily-PnL da, nutzen wir nur MaxDD-Trigger
-            # (Dein bot.py schreibt day_pnl_pct im risk-Log, das kann man optional hier zusätzlich einlesen)
+            if max_dd >= MAX_DD_LIMIT:
+                trigger = "MAX_DRAWDOWN_EXCEEDED"
+            # Beispiel fuer DAY_LOSS_LIMIT koennte hier spaeter ergaenzt werden
 
             if trigger:
                 offenders = worst_offenders(snap, topn=2)
                 tuning = propose_tuning(status)
-                write_control(True, offenders, tuning)
                 write_alert_report(trigger, status, offenders, tuning)
+                write_control(True, offenders, tuning)
             else:
-                # falls alles okay, hebe ggf. Pause auf (sanft)
+                # alles ok -> ggf. Pause sanft aufheben
                 write_control(False, [], None)
 
-        time.sleep(15)  # alle 15s prüfen
+        time.sleep(15)  # alle 15s pruefen
 
 
 if __name__ == "__main__":

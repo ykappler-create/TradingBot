@@ -1,0 +1,7 @@
+risk:
+  risk_per_trade_pct: 0.005
+  max_drawdown_pct: 8.0
+  day_loss_limit_pct: -3.0
+  atr_stop_mult: 1.6
+  atr_tp_mult: 2.2
+  max_concurrent_positions: 2

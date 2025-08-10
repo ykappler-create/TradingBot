@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: ["main"]
   pull_request:
@@ -40,14 +41,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-ci.txt
 
-      # Projekt-Requirements sind optional (nicht failen lassen)
       - name: Install project requirements (best effort)
         run: |
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt || echo "Soft-fail: requirements.txt konnte nicht komplett installiert werden."
           fi
 
-      # Pre-commit nur als Check (keine Auto-Fixes)
       - name: Pre-commit (checks only)
         env:
           SKIP: ruff-format,black,end-of-file-fixer,trim-trailing-whitespace
@@ -68,15 +67,18 @@ jobs:
           if [ -d tests ]; then
             pytest -q --maxfail=1 --disable-warnings --junitxml=pytest.xml
           else
-            echo "No tests/ folder – skipping tests."
+            echo "No tests/ folder â€“ skipping tests."
           fi
+
+      - name: Validate config
+        run: python scripts/validate_config.py
 
       - name: Backtest report (if CSV present)
         run: |
           if [ -f bridge_out/reports/equity_curve.csv ]; then
             python scripts/backtest.py --csv bridge_out/reports/equity_curve.csv --out bridge_out/reports/equity_curve.png
           else
-            echo "No equity_curve.csv – skipping backtest report."
+            echo "No equity_curve.csv â€“ skipping backtest report."
           fi
 
       - name: Vulnerability scan (pip-audit)
