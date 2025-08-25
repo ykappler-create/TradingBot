@@ -4,6 +4,6 @@ pytest==8.3.2
 mypy==1.10.0
 pre-commit==3.7.1
 pip-audit==2.7.3
-pandas==2.2.2
+pandas==2.3.2
 matplotlib==3.9.0
 pydantic==2.8.2
