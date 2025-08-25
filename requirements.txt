@@ -26,7 +26,7 @@ narwhals==2.0.1
 nodeenv==1.9.1
 numpy==2.3.2
 packaging==25.0
-pandas==2.3.1
+pandas==2.3.2
 pathspec==0.12.1
 pillow==11.3.0
 platformdirs==4.3.8
